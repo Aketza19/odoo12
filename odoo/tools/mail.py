@@ -41,7 +41,7 @@ safe_attrs = clean.defs.safe_attrs | frozenset(
 
 class _Cleaner(clean.Cleaner):
 
-    _style_re = re.compile('''([\w-]+)\s*:\s*((?:[^;"']|"[^"]*"|'[^']*')+)''')
+    _style_re = re.compile(r'''([\w-]+)\s*:\s*((?:[^;"']|"[^";]*"|'[^';]*')+)''')
 
     _style_whitelist = [
         'font-size', 'font-family', 'font-weight', 'background-color', 'color', 'text-align',
@@ -160,11 +160,6 @@ class _Cleaner(clean.Cleaner):
                 el.attrib['style'] = '; '.join('%s:%s' % (key, val) for (key, val) in valid_styles.items())
             else:
                 del el.attrib['style']
-
-    def allow_element(self, el):
-        if el.tag == 'object' and el.get('type') == "image/svg+xml":
-            return True
-        return super(_Cleaner, self).allow_element(el)
 
 
 def html_sanitize(src, silent=True, sanitize_tags=True, sanitize_attributes=False, sanitize_style=False, strip_style=False, strip_classes=False):
@@ -392,7 +387,7 @@ def append_content_to_html(html, content, plaintext=True, preserve=False, contai
     """
     html = ustr(html)
     if plaintext and preserve:
-        content = u'\n<pre>%s</pre>\n' % ustr(content)
+        content = u'\n<pre>%s</pre>\n' % misc.html_escape(ustr(content))
     elif plaintext:
         content = '\n%s\n' % plaintext2html(content, container_tag)
     else:
