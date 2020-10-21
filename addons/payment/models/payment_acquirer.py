@@ -402,7 +402,7 @@ class PaymentAcquirer(models.Model):
                 'partner_zip': partner.zip,
                 'partner_city': partner.city,
                 'partner_address': _partner_format_address(partner.street, partner.street2),
-                'partner_country_id': partner.country_id.id,
+                'partner_country_id': partner.country_id.id or self.env['res.company']._company_default_get().country_id.id,
                 'partner_country': partner.country_id,
                 'partner_phone': partner.phone,
                 'partner_state': partner.state_id,
@@ -844,8 +844,16 @@ class PaymentTransaction(models.Model):
             'state_message': msg,
         })
 
+    def _check_context_lang(self):
+        langs = [code for code, _ in self.env['res.lang'].get_installed()]
+        if self.env.context.get('lang') not in langs:
+            lang = self.env.user.lang or self.env.user.company_id.partner_id.lang or langs[0]
+            return self.with_context(lang=lang)
+        return self
+
     @api.multi
     def _post_process_after_done(self):
+        self = self._check_context_lang()
         self._reconcile_after_transaction_done()
         self._log_payment_transaction_received()
         self.write({'is_processed': True})
