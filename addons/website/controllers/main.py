@@ -197,7 +197,7 @@ class Website(Home):
         try:
             request.website.get_template('website.website_info').name
         except Exception as e:
-            return request.env['ir.http']._handle_exception(e, 404)
+            return request.env['ir.http']._handle_exception(e)
         Module = request.env['ir.module.module'].sudo()
         apps = Module.search([('state', '=', 'installed'), ('application', '=', True)])
         modules = Module.search([('state', '=', 'installed'), ('application', '=', False)])
@@ -318,7 +318,7 @@ class Website(Home):
 
         return request.redirect(redirect)
 
-    @http.route(['/website/publish'], type='json', auth="public", website=True)
+    @http.route(['/website/publish'], type='json', auth="user", website=True)
     def publish(self, id, object):
         Model = request.env[object]
         record = Model.browse(int(id))

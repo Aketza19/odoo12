@@ -5,7 +5,8 @@ import socket
 
 from odoo.addons.test_mail.data.test_mail_data import \
     MAIL_TEMPLATE, MAIL_TEMPLATE_PLAINTEXT, MAIL_MULTIPART_MIXED, MAIL_MULTIPART_MIXED_TWO, \
-    MAIL_MULTIPART_IMAGE, MAIL_SINGLE_BINARY, MAIL_EML_ATTACHMENT, MAIL_XHTML
+    MAIL_MULTIPART_IMAGE, MAIL_SINGLE_BINARY, MAIL_EML_ATTACHMENT, MAIL_ATTACHMENT_BAD_ENCODING, \
+    MAIL_XHTML
 from odoo.addons.test_mail.tests.common import BaseFunctionalTest, MockEmails
 from odoo.addons.test_mail.tests.common import mail_new_test_user
 from odoo.tools import mute_logger, formataddr
@@ -92,6 +93,12 @@ class TestMailgateway(BaseFunctionalTest, MockEmails):
         self.env['mail.thread'].message_process('mail.channel', MAIL_EML_ATTACHMENT)
 
     @mute_logger('odoo.addons.mail.models.mail_thread')
+    def test_message_parse_attachment_bad_encoding(self):
+        """ Test that the parsing of mail with bad encoding attachment content-id, can be processed.
+        """
+        self.env['mail.thread'].message_process('mail.channel', MAIL_ATTACHMENT_BAD_ENCODING)
+
+    @mute_logger('odoo.addons.mail.models.mail_thread')
     def test_message_parse_xhtml(self):
         """ Test that the parsing of mail with embedded emails as eml(msg) which generates empty attachments, can be processed.
         """
@@ -165,6 +172,24 @@ class TestMailgateway(BaseFunctionalTest, MockEmails):
     # --------------------------------------------------
     # Alias configuration
     # --------------------------------------------------
+
+    @mute_logger('odoo.addons.mail.models.mail_thread', 'odoo.addons.mail.models.mail_mail', 'odoo.models.unlink')
+    def test_message_process_alias_bounce_message_to(self):
+        """ Check bounce message contains the bouncing alias, not a generic "to" """
+        self.alias.write({'alias_contact': 'partners'})
+        bounce_message_with_alias = "The following email sent to %s cannot be accepted because this is a private email address." % self.alias.display_name.lower()
+
+        # Bounce is To
+        self.format_and_process(MAIL_TEMPLATE, to='groups@example.com', cc='other@gmail.com', subject='Should Bounce')
+        self.assertIn(bounce_message_with_alias, self._mails[0].get('body'))
+
+        # Bounce is CC
+        self.format_and_process(MAIL_TEMPLATE, to='other@gmail.com', cc='groups@example.com', subject='Should Bounce')
+        self.assertIn(bounce_message_with_alias, self._mails[1].get('body'))
+
+        # Bounce is part of To
+        self.format_and_process(MAIL_TEMPLATE, to='other@gmail.com, groups@example.com', subject='Should Bounce')
+        self.assertIn(bounce_message_with_alias, self._mails[1].get('body'))
 
     @mute_logger('odoo.addons.mail.models.mail_thread', 'odoo.models')
     def test_message_process_alias_user_id(self):
